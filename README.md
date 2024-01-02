@@ -102,7 +102,6 @@ out there, but I think it's worth it for the extra features.
 ```
 
 ```
-
 prompt_template = """\
 For the following customer_review, extract the following information:
 
@@ -122,7 +121,8 @@ price_value
 
 customer_review: {customer_review}
 """
-
+```
+```
 # almost same as previous usecase, except that we explicitly state the desired json format in the template and probably
 # won't need that second dynamic variable (style) while formatting the prompt
 
