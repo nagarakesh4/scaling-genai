@@ -99,6 +99,9 @@ using it every other morning to clear the leaves on our lawn. \
 It's slightly more expensive than the other leaf blowers \
 out there, but I think it's worth it for the extra features.
 """
+```
+
+```
 
 prompt_template = """\
 For the following customer_review, extract the following information:
@@ -273,5 +276,3 @@ memory.load_memory_variables({})
 
 ```
 
-
-                     
