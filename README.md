@@ -1,5 +1,5 @@
-## Models, Prompts, Parsers, Memory, Chains Conversation/Prediction
-- [ref](https://learn.deeplearning.ai/langchain)
+## Models, Prompts, Parsers, Memory, Chains, Conversation/Prediction
+[ref](https://learn.deeplearning.ai/langchain)
 
 ### direct API calls to OpenAI.
 ```
@@ -272,4 +272,6 @@ conversation.predict(input="What would be a good demo to show?")
 memory.load_memory_variables({})
 
 ```
+
+
                      
