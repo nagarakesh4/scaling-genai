@@ -1,4 +1,4 @@
-## Models, Prompts, Parsers, Memory, Conversation/Prediction
+## Models, Prompts, Parsers, Memory, Chains Conversation/Prediction
 - [ref](https://learn.deeplearning.ai/langchain)
 
 ### direct API calls to OpenAI.
