@@ -273,6 +273,157 @@ conversation.predict(input="What would be a good demo to show?")
 
 # also memorizes the prediction the AI has provided
 memory.load_memory_variables({})
-
 ```
 
+### LLM Chains: 
+- important building block of langchain
+- combines llm with prompt and puts all the building blocks together to carry out a sequence of operations on the input text.
+
+```
+# pipe install pandas to read csv file
+import pandas as pd
+df = pd.read_csv('Data.csv')
+
+# print top 5 rows
+df.head()
+
+# Code
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains import LLMChain
+
+llm = ChatOpenAI(temperature=0.9, model=llm_model)
+
+langChainPrompt_template = ChatPromptTemplate.from_template(
+    "What is the best name to describe \
+    a company that makes {product}?"
+)
+
+# combine the above llm and prompt into a chain using LLMChain
+chain = LLMChain(llm=llm, prompt=langChainPrompt_template)
+
+product = "Queen Size Sheet Set for babies"
+chain.run(product) # suggests as Royal Linens
+```
+
+### Simple Sequential Chain
+- run one after the other chain
+- output of one chain is the input to the next chain
+- simple sequential - single input / output
+- sequential - multiple inputs/outputs
+
+```
+# Single Sequential chain
+
+from langchain.chains import SimpleSequentialChain
+
+llm = ChatOpenAI(temperature=0.9, model=llm_model)
+
+# prompt template 1
+first_prompt = ChatPromptTemplate.from_template(
+    "What is the best name to describe \
+    a company that makes {product}?"
+)
+
+# Chain 1
+chain_one = LLMChain(llm=llm, prompt=first_prompt)
+
+# prompt template 2
+second_prompt = ChatPromptTemplate.from_template(
+    "Write a 20 words description for the following \
+    company:{company_name}"
+)
+# chain 2
+chain_two = LLMChain(llm=llm, prompt=second_prompt)
+
+# combining chain 1 and 2
+overall_simple_chain = SimpleSequentialChain(chains=[chain_one, chain_two],verbose=True)
+
+# run the model
+overall_simple_chain.run(product) # here run is same as other ways to call the model to run,
+however it also needs the positional arguments to be provided in this case `product` (dynamic)
+```
+
+```
+# Regular Sequential Chain (multiple chains, reusing from previous)
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains import SequentialChain
+from langchain.chains import LLMChain
+
+# temperature 0.9 will let the ai to generate message with more text in the content
+llm = ChatOpenAI(temperature=0.0, model=llm_model)
+
+# prompt template 1: translate to english
+first_prompt = ChatPromptTemplate.from_template(
+    "Translate the following review to english:"
+    "\n\n{Review}"
+)
+
+# chain 1: input= Review and output= English_Review
+chain_one = LLMChain(llm=llm, prompt=first_prompt, output_key="English_Review")
+
+# prompt template 2: generate a summary of the review
+second_prompt = ChatPromptTemplate.from_template(
+    "Can you summarize the following review in 1 sentence:"
+    "\n\n{English_Review}"
+)
+
+# chain 2: input= English_Review and output= summary
+chain_two = LLMChain(llm=llm, prompt=second_prompt, output_key="summary")
+
+# prompt template 3: detect what language is the review in
+third_prompt = ChatPromptTemplate.from_template(
+    "What language is the following review:\n\n{Review}"
+)
+
+# chain 3: input= Review and output= language
+chain_three = LLMChain(llm=llm, prompt=third_prompt, output_key="language")
+
+# # prompt template 4: generate a follow up message in the original language
+fourth_prompt = ChatPromptTemplate.from_template(
+    "Write a follow up response to the following "
+    "summary in the specified language:"
+    "\n\nSummary: {summary}\n\nLanguage: {language}"
+)
+
+# chain 4: input= summary, language and output= followup_message
+chain_four = LLMChain(llm=llm, prompt=fourth_prompt, output_key="followup_message")
+
+# overall_chain: input= Review 
+# and output= English_Review,summary, followup_message
+overall_chain = SequentialChain(
+    chains=[chain_one, chain_two, chain_three, chain_four],
+    input_variables=["Review"],
+    output_variables=["English_Review", "summary","followup_message"],
+    verbose=True
+)
+
+# choose a review from dataset or provide your own
+#review = df.Review[5]
+# review = 'హెడ్‌ఫోన్‌లు అస్సలు బాగోలేదు, తక్కువ ధరకు వస్తే వాటిని కొంటాను'
+review = 'हेडफोन अच्छे नहीं हैं, लेकिन अगर मुझे ये कम कीमत पर मिलेंगे तो मैं इन्हें खरीदूंगा'
+
+
+# pass it into the chain
+overall_chain(review)
+```
+```
+{'Review': 'हेडफोन अच्छे नहीं हैं, लेकिन अगर मुझे ये कम कीमत पर मिलेंगे तो मैं इन्हें खरीदूंगा',
+ 'English_Review': 'The headphones are not good, but if I get them at a lower price, I will buy them.',
+ 'summary': 'The reviewer would only purchase the headphones if they were available at a discounted price.',
+ 'language': 'Hindi',
+ 'followup_message': 'सारांश: रिव्यूअर केवल उन हेडफोन को खरीदेंगे अगर उन्हें छूट की कीमत में उपलब्ध हों।\n\nउत्तर: यह अच्छी बात है कि आपको यह हेडफोन पसंद आया है। हम आपको बताना चाहेंगे कि इस समय इस हेडफोन के लिए छूट की पेशकश उपलब्ध है। आप इसे अपनी आवश्यकताओं के अनुसार खरीद सकते हैं। आप इसे ऑनलाइन या ऑफलाइन दोनों तरीकों से खरीद सकते हैं। हम आशा करते हैं कि आप इसे खरीदने के लिए तैयार होंगे।'}
+```
+
+### Routing Chain
+- if there are multiple sub chains, we can have a router chain to decide where the request should go to, different prompt template, with different prompt template write more info about them (in array), this info will go to router chain so that router chain can decide when to use the sub-chain
+- MultiPromptChain - specific type of chain - routing b/n multiple different prompt templates
+- LLMRouterChain - uses language model to route b/n diff sub chains (uses the info array)
+- RouterOutputParser - parses LLM output into dictionary that can be used in downstream to decide which stream to use and what input should be
+
+### Agents
+- LLM is a reasoning change, will use the background knowledge from internet or our custom response to decided what to do next
+- Agents are new to the field
+- incorporated to search engine (comes with lang chain), integrate with data store
+- 
