@@ -166,3 +166,139 @@ await nameGenerationChain.batch(inputs);
   "1. Alpaca Luxe\n2. Andean Elegance\n3. Woolly Alpaca Co."
 ]
 ```
+
+### RAG
+- Document loaders: load documents from source (PDF, db, web)
+- Splitting: split docs into chunks to fit into LLM context window to avoid distraction (while predicting)
+- Storage: embed chunks into vector store to allow for later retrieval based on input queries
+- Query: Now when user wants to access the data (performs a query) we retrieve the relevant previously split chunks and send the final output as context
+
+
+#### Langchain: Document loaders
+- <img width="200" height="200" alt="image" src="https://github.com/nagarakesh4/genai-scale-notes/assets/4505218/918f49f9-df0a-4d7f-9c1b-0ed3796f3f78">
+
+##### GitHub Reader
+```
+import "dotenv/config";
+import { GithubRepoLoader } from "langchain/document_loaders/web/github";
+// Peer dependency, used to support .gitignore syntax
+import ignore from "ignore";
+
+// Will not include anything under "ignorePaths"
+// Will not include anything under "ignorePaths"
+const loader = new GithubRepoLoader(
+  "https://github.com/nagarakesh4/web",
+  { branch: 'master', recursive: false, ignorePaths: ["*.md", "yarn.lock"] }
+);
+
+//load the docs
+const docs = await loader.load();
+console.log(docs.slice(0, 3));
+//prints the file name, content (metadata) of the above repo in LLM response format
+[
+  Document {
+    pageContent: "<!DOCTYPE html>\n" +
+      '<html lang="en">\n' +
+      "<head>\n" +
+      '    <meta charset="UTF-8">\n' +
+      '    <meta name="viewport" content'... 477 more characters,
+    metadata: {
+      source: "index.html",
+      repository: "https://github.com/nagarakesh4/web",
+      branch: "master"
+    }
+  },
+  Document {
+    pageContent: "//comments helps others to understand your code better\n" +
+      "//single line comments are denoted with doubl"... 1867 more characters,
+    metadata: {
+      source: "index.js",
+      repository: "https://github.com/nagarakesh4/web",
+      branch: "master"
+    }
+  }
+]
+```
+
+##### PDF Reader
+```
+// Peer dependency
+import * as parse from "pdf-parse";
+import { PDFLoader } from "langchain/document_loaders/fs/pdf";
+
+const loader = new PDFLoader("./data/MachineLearning-Lecture01.pdf");
+
+const rawCS229Docs = await loader.load();
+
+# log first 5 pages
+console.log(rawCS229Docs.slice(0, 5));
+//similar to above shows metadata / content of the pdf
+```
+
+
+#### Langchain: Splitting
+- semantically related ideas in the same chunk so that LLM gets the entire self-contained idea without any distraction
+- split depends on what we are loading, e.g., js documents are split by fun impl so that LLM is aware of the (self-contained) context
+- RecursiveCharacterTextSplitter splits on paragraphs is a good start
+
+- Using JS example
+```
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+
+
+const splitter = RecursiveCharacterTextSplitter.fromLanguage("js", { //understands that common 'js' features are the chunks 
+  chunkSize: 32, //very small
+  chunkOverlap: 0, //useful to serve chunks across each other
+});
+
+const code = `function helloWorld() {
+console.log("Hello, World!");
+}
+// Call the function
+helloWorld();`;
+
+await splitter.splitText(code);
+//naturally split (as per js coding)
+[
+  "function helloWorld() {",
+  'console.log("Hello, World!");\n}',
+  "// Call the function",
+  "helloWorld();"
+]
+
+//if we split naively (like spaces), we get chunks split differently which makes LLM job difficult on generation
+import { CharacterTextSplitter } from "langchain/text_splitter";
+
+const splitter = new CharacterTextSplitter({
+  chunkSize: 32,
+  chunkOverlap: 0,
+  separator: " " //space as naive character splitter
+});
+
+await splitter.splitText(code);
+//LLM will have little hard time to understand below
+[
+  "function helloWorld()",
+  '{\nconsole.log("Hello,',
+  'World!");\n}\n// Call the',
+  "function\nhelloWorld();"
+]
+
+//increasing chunk size and chunk overlap will set full context for LLM
+
+```
+
+- Using on PDF
+```
+const splitter = new RecursiveCharacterTextSplitter({
+  chunkSize: 512,
+  chunkOverlap: 64,
+});
+
+const splitDocs = await splitter.splitDocuments(rawCS229Docs);
+
+console.log(splitDocs.slice(0, 5));
+```
+
+#### Langchain: Embed in Vector store 
+- we embed chunks in Vector store for easier search and query
