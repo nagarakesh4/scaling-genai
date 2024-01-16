@@ -301,4 +301,7 @@ console.log(splitDocs.slice(0, 5));
 ```
 
 #### Langchain: Embed in Vector store 
-- we embed chunks in Vector store for easier search and query
+- we embed chunks in Vector store for easier search and query based on input query
+- text embedding model: OpenAIEmbedding
+- Vector store: specialized type of database with natural language search capabilities
+- when user comes with query, search vector store for an embedding similar to the query asked and fetch relevant chunks
